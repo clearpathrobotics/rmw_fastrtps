@@ -209,7 +209,22 @@ rmw_create_node(
   Domain::getDefaultParticipantAttributes(participantAttrs);
 
   participantAttrs.rtps.builtin.domainId = static_cast<uint32_t>(domain_id);
+  // since the participant name is not part of the DDS spec
   participantAttrs.rtps.setName(name);
+  // the node name is also set in the user_data
+  size_t name_length = strlen(name);
+  participantAttrs.rtps.userData.resize(name_length + 6);
+  participantAttrs.rtps.userData[0] = 'n';
+  participantAttrs.rtps.userData[1] = 'a';
+  participantAttrs.rtps.userData[2] = 'm';
+  participantAttrs.rtps.userData[3] = 'e';
+  participantAttrs.rtps.userData[4] = '=';
+  {
+    for (size_t i = 0; i < name_length; ++i) {
+      participantAttrs.rtps.userData[5 + i] = name[i];
+    }
+    participantAttrs.rtps.userData[5 + name_length] = ';';
+  }
 
   if (security_options->security_root_path) {
     // if security_root_path provided, try to find the key and certificate files
