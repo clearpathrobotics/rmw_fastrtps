@@ -51,9 +51,8 @@ rmw_get_node_names(
   }
 
   auto impl = static_cast<CustomParticipantInfo *>(node->data);
-  Participant * participant = impl->participant;
+  auto participant_names = impl->listener->get_discovered_names();
 
-  auto participant_names = participant->getParticipantNames();
   rcutils_allocator_t allocator = rcutils_get_default_allocator();
   rcutils_ret_t rcutils_ret =
     rcutils_string_array_init(node_names, participant_names.size(), &allocator);
