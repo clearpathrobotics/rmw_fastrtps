@@ -20,8 +20,11 @@
 #include <mutex>
 #include <utility>
 
+#include "fastrtps/subscriber/SampleInfo.h"
 #include "fastrtps/subscriber/Subscriber.h"
 #include "fastrtps/subscriber/SubscriberListener.h"
+
+#include "rcutils/logging_macros.h"
 
 class SubListener;
 
@@ -37,8 +40,10 @@ class SubListener : public eprosima::fastrtps::SubscriberListener
 {
 public:
   explicit SubListener(CustomSubscriberInfo * info)
-  : data_(0),
-    conditionMutex_(nullptr), conditionVariable_(nullptr)
+  : data_(0)
+  , conditionMutex_(nullptr)
+  , conditionVariable_(nullptr)
+  , customSubscriberInfo_(info)
   {
     // Field is not used right now
     (void)info;
@@ -55,7 +60,6 @@ public:
   void
   onNewDataMessage(eprosima::fastrtps::Subscriber * sub)
   {
-    (void)sub;
     std::lock_guard<std::mutex> lock(internalMutex_);
 
     if (conditionMutex_ != nullptr) {
@@ -89,20 +93,30 @@ public:
   bool
   hasData()
   {
+    uint64_t real_cnt = (customSubscriberInfo_->subscriber_)? customSubscriberInfo_->subscriber_->getUnreadCount(): -1;
+    uint64_t cache_cnt = data_;
+    RCUTILS_LOG_WARN_EXPRESSION_NAMED((cache_cnt > real_cnt), "rmw_fastrtps_cpp", "rtps history byte count missmatch: data_ %d > actual %d", cache_cnt, real_cnt);
     return data_ > 0;
   }
 
-  void
-  data_taken()
+  bool
+  takeNextData(void* buffer, eprosima::fastrtps::SampleInfo_t* info)
   {
-    std::lock_guard<std::mutex> lock(internalMutex_);
+    bool taken = false;
+    uint64_t data = data_;
 
+    taken = customSubscriberInfo_->subscriber_->takeNextData(buffer, info);
+
+    RCUTILS_LOG_WARN_EXPRESSION_NAMED(!taken, "rmw_fastrtps_cpp", "takeNextData failed");
+
+    std::lock_guard<std::mutex> lock(internalMutex_);
     if (conditionMutex_ != nullptr) {
       std::unique_lock<std::mutex> clock(*conditionMutex_);
-      --data_;
+      data_ = taken? data_ - 1: data_ - data;
     } else {
-      --data_;
+      data_ = taken? data_ - 1: data_ - data;
     }
+    return taken;
   }
 
 private:
@@ -110,6 +124,7 @@ private:
   std::atomic_size_t data_;
   std::mutex * conditionMutex_;
   std::condition_variable * conditionVariable_;
+  CustomSubscriberInfo * customSubscriberInfo_;
 };
 
 #endif  // RMW_FASTRTPS_CPP__CUSTOM_SUBSCRIBER_INFO_HPP_

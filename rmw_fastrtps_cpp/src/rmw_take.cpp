@@ -47,16 +47,13 @@ rmw_take(const rmw_subscription_t * subscription, void * ros_message, bool * tak
   eprosima::fastcdr::FastBuffer buffer;
   eprosima::fastrtps::SampleInfo_t sinfo;
 
-  if (info->subscriber_->takeNextData(&buffer, &sinfo)) {
-    info->listener_->data_taken();
-
+  if (info->listener_->takeNextData(&buffer, &sinfo)) {
     if (sinfo.sampleKind == ALIVE) {
       _deserialize_ros_message(&buffer, ros_message, info->type_support_,
         info->typesupport_identifier_);
       *taken = true;
     }
   }
-
   return RMW_RET_OK;
 }
 
@@ -89,9 +86,7 @@ rmw_take_with_info(
   eprosima::fastcdr::FastBuffer buffer;
   eprosima::fastrtps::SampleInfo_t sinfo;
 
-  if (info->subscriber_->takeNextData(&buffer, &sinfo)) {
-    info->listener_->data_taken();
-
+  if (info->listener_->takeNextData(&buffer, &sinfo)) {
     if (sinfo.sampleKind == ALIVE) {
       _deserialize_ros_message(&buffer, ros_message, info->type_support_,
         info->typesupport_identifier_);
@@ -103,7 +98,6 @@ rmw_take_with_info(
       *taken = true;
     }
   }
-
   return RMW_RET_OK;
 }
 }  // extern "C"
